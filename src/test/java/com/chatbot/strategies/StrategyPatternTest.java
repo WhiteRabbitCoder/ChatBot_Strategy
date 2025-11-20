@@ -197,5 +197,127 @@ class StrategyPatternTest {
             strategySelector.getStrategyByName("nostalgic").getStrategyName());
         assertEquals("ExtremeSupportStrategy",
             strategySelector.getStrategyByName("crisis").getStrategyName());
+        assertEquals("AngryStrategy",
+            strategySelector.getStrategyByName("angry").getStrategyName());
+        assertEquals("ExcitedStrategy",
+            strategySelector.getStrategyByName("excited").getStrategyName());
+        assertEquals("ScaredStrategy",
+            strategySelector.getStrategyByName("scared").getStrategyName());
+        assertEquals("ThoughtfulStrategy",
+            strategySelector.getStrategyByName("thoughtful").getStrategyName());
+        assertEquals("SeriousStrategy",
+            strategySelector.getStrategyByName("serious").getStrategyName());
+        assertEquals("ExhaustedStrategy",
+            strategySelector.getStrategyByName("exhausted").getStrategyName());
+    }
+
+    @Test
+    void testAngrySentimentSelectsAngry() {
+        Sentiment angrySentiment = new Sentiment("ANGRY", 0.9f);
+        ResponseStrategy strategy = strategySelector.selectStrategy(angrySentiment);
+
+        assertNotNull(strategy);
+        assertEquals("AngryStrategy", strategy.getStrategyName(),
+            "Angry sentiment should select AngryStrategy");
+    }
+
+    @Test
+    void testExcitedSentimentSelectsExcited() {
+        Sentiment excitedSentiment = new Sentiment("EXCITED", 0.85f);
+        ResponseStrategy strategy = strategySelector.selectStrategy(excitedSentiment);
+
+        assertNotNull(strategy);
+        assertEquals("ExcitedStrategy", strategy.getStrategyName(),
+            "Excited sentiment should select ExcitedStrategy");
+    }
+
+    @Test
+    void testScaredSentimentSelectsScared() {
+        Sentiment scaredSentiment = new Sentiment("SCARED", 0.9f);
+        ResponseStrategy strategy = strategySelector.selectStrategy(scaredSentiment);
+
+        assertNotNull(strategy);
+        assertEquals("ScaredStrategy", strategy.getStrategyName(),
+            "Scared sentiment should select ScaredStrategy");
+    }
+
+    @Test
+    void testThoughtfulSentimentSelectsThoughtful() {
+        Sentiment thoughtfulSentiment = new Sentiment("THOUGHTFUL", 0.75f);
+        ResponseStrategy strategy = strategySelector.selectStrategy(thoughtfulSentiment);
+
+        assertNotNull(strategy);
+        assertEquals("ThoughtfulStrategy", strategy.getStrategyName(),
+            "Thoughtful sentiment should select ThoughtfulStrategy");
+    }
+
+    @Test
+    void testSeriousSentimentSelectsSerious() {
+        Sentiment seriousSentiment = new Sentiment("SERIOUS", 0.75f);
+        ResponseStrategy strategy = strategySelector.selectStrategy(seriousSentiment);
+
+        assertNotNull(strategy);
+        assertEquals("SeriousStrategy", strategy.getStrategyName(),
+            "Serious sentiment should select SeriousStrategy");
+    }
+
+    @Test
+    void testExhaustedSentimentSelectsExhausted() {
+        Sentiment exhaustedSentiment = new Sentiment("EXHAUSTED", 0.9f);
+        ResponseStrategy strategy = strategySelector.selectStrategy(exhaustedSentiment);
+
+        assertNotNull(strategy);
+        assertEquals("ExhaustedStrategy", strategy.getStrategyName(),
+            "Exhausted sentiment should select ExhaustedStrategy");
+    }
+
+    @Test
+    void testAngryStrategyResponse() {
+        ResponseStrategy strategy = strategySelector.getStrategyByName("angry");
+        String response = strategy.generateResponse("I'm so angry at you!", "");
+
+        assertNotNull(response);
+        assertFalse(response.isEmpty());
+        assertTrue(response.toLowerCase().contains("understand") || 
+                   response.toLowerCase().contains("frustrat") ||
+                   response.toLowerCase().contains("upset"),
+            "Angry strategy should provide de-escalation response");
+    }
+
+    @Test
+    void testExcitedStrategyResponse() {
+        ResponseStrategy strategy = strategySelector.getStrategyByName("excited");
+        String response = strategy.generateResponse("I'm so excited!", "");
+
+        assertNotNull(response);
+        assertFalse(response.isEmpty());
+        assertTrue(response.contains("!"),
+            "Excited strategy should use enthusiastic punctuation");
+    }
+
+    @Test
+    void testScaredStrategyResponse() {
+        ResponseStrategy strategy = strategySelector.getStrategyByName("scared");
+        String response = strategy.generateResponse("I'm so scared", "");
+
+        assertNotNull(response);
+        assertFalse(response.isEmpty());
+        assertTrue(response.toLowerCase().contains("safe") ||
+                   response.toLowerCase().contains("okay") ||
+                   response.toLowerCase().contains("breath"),
+            "Scared strategy should provide reassuring response");
+    }
+
+    @Test
+    void testExhaustedStrategyResponse() {
+        ResponseStrategy strategy = strategySelector.getStrategyByName("exhausted");
+        String response = strategy.generateResponse("I'm so exhausted", "");
+
+        assertNotNull(response);
+        assertFalse(response.isEmpty());
+        assertTrue(response.toLowerCase().contains("rest") ||
+                   response.toLowerCase().contains("tired") ||
+                   response.toLowerCase().contains("exhaust"),
+            "Exhausted strategy should acknowledge tiredness");
     }
 }

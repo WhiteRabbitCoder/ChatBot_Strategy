@@ -1,10 +1,15 @@
 package com.chatbot.strategies;
 
 import com.chatbot.model.Sentiment;
+import com.chatbot.model.StrategyMatch;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Selects the appropriate ResponseStrategy based on detected sentiment.
- * FIXED: Negative sentiment now maps to Neutral to avoid toxic positivity.
+ * IMPROVED: Uses weighted scoring instead of "first match wins".
  */
 public class StrategySelector {
     private final ResponseStrategy neutralStrategy;
@@ -14,6 +19,12 @@ public class StrategySelector {
     private final ResponseStrategy sadStrategy;
     private final ResponseStrategy nostalgicStrategy;
     private final ResponseStrategy extremeSupportStrategy;
+    private final ResponseStrategy angryStrategy;
+    private final ResponseStrategy excitedStrategy;
+    private final ResponseStrategy scaredStrategy;
+    private final ResponseStrategy thoughtfulStrategy;
+    private final ResponseStrategy seriousStrategy;
+    private final ResponseStrategy exhaustedStrategy;
 
     private final float positiveThreshold = 0.6f;
     private final float negativeThreshold = 0.5f;
@@ -26,45 +37,90 @@ public class StrategySelector {
         this.sadStrategy = new SadStrategy();
         this.nostalgicStrategy = new NostalgicStrategy();
         this.extremeSupportStrategy = new ExtremeSupportStrategy();
+        this.angryStrategy = new AngryStrategy();
+        this.excitedStrategy = new ExcitedStrategy();
+        this.scaredStrategy = new ScaredStrategy();
+        this.thoughtfulStrategy = new ThoughtfulStrategy();
+        this.seriousStrategy = new SeriousStrategy();
+        this.exhaustedStrategy = new ExhaustedStrategy();
     }
 
     public ResponseStrategy selectStrategy(Sentiment sentiment) {
-        // 1. CRITICAL SAFETY LAYER
+        // 1. CRITICAL SAFETY LAYER (Always highest priority)
         if (sentiment.isCrisis()) {
             return extremeSupportStrategy;
         }
 
-        // 2. SPECIFIC EMOTIONAL STATES
-        if (sentiment.isRomantic()) {
-            return sentiment.getConfidence() > 0.7f ? romanticStrategy : friendlyStrategy;
-        }
+        // 2. WEIGHTED STRATEGY SELECTION
+        // Calculate weights for all applicable strategies
+        List<StrategyMatch> matches = new ArrayList<>();
 
+        // Add weights based on sentiment and confidence
+        if (sentiment.isAngry()) {
+            matches.add(new StrategyMatch("Angry", sentiment.getConfidence(), "Anger detected"));
+        }
+        
+        if (sentiment.isScared()) {
+            matches.add(new StrategyMatch("Scared", sentiment.getConfidence(), "Fear/anxiety detected"));
+        }
+        
         if (sentiment.isSad()) {
-            return sadStrategy;
+            matches.add(new StrategyMatch("Sad", sentiment.getConfidence(), "Sadness detected"));
         }
-
+        
+        if (sentiment.isExhausted()) {
+            matches.add(new StrategyMatch("Exhausted", sentiment.getConfidence(), "Exhaustion detected"));
+        }
+        
+        if (sentiment.isRomantic()) {
+            float weight = sentiment.getConfidence() > 0.7f ? sentiment.getConfidence() : sentiment.getConfidence() * 0.7f;
+            matches.add(new StrategyMatch("Romantic", weight, "Romance detected"));
+        }
+        
+        if (sentiment.isExcited()) {
+            matches.add(new StrategyMatch("Excited", sentiment.getConfidence(), "Excitement detected"));
+        }
+        
         if (sentiment.isNostalgic()) {
-            return nostalgicStrategy;
+            matches.add(new StrategyMatch("Nostalgic", sentiment.getConfidence(), "Nostalgia detected"));
         }
-
-        // 3. GENERAL SENTIMENT HANDLING
-
-        // Positive: Be friendly or funny
+        
+        if (sentiment.isThoughtful()) {
+            matches.add(new StrategyMatch("Thoughtful", sentiment.getConfidence(), "Thoughtfulness detected"));
+        }
+        
+        if (sentiment.isSerious()) {
+            matches.add(new StrategyMatch("Serious", sentiment.getConfidence(), "Seriousness detected"));
+        }
+        
+        // General positive sentiment
         if (sentiment.isPositive() && sentiment.getConfidence() >= positiveThreshold) {
-            return Math.random() > 0.4 ? friendlyStrategy : humorousStrategy;
+            // Split weight between Friendly and Humorous
+            float weight = sentiment.getConfidence() * 0.5f;
+            matches.add(new StrategyMatch("Friendly", weight, "Positive sentiment"));
+            matches.add(new StrategyMatch("Humorous", weight * 0.8f, "Positive sentiment (humorous variant)"));
+        }
+        
+        // General negative sentiment (but not specific emotions)
+        if (sentiment.isNegative() && sentiment.getConfidence() >= negativeThreshold) {
+            // Use Neutral for de-escalation unless specific emotion is stronger
+            matches.add(new StrategyMatch("Neutral", sentiment.getConfidence() * 0.6f, "Negative sentiment (de-escalation)"));
+        }
+        
+        // If we have matches, sort by weight and select the highest
+        if (!matches.isEmpty()) {
+            Collections.sort(matches); // Sorts in descending order
+            StrategyMatch best = matches.get(0);
+            
+            // Log the selection for debugging
+            System.out.printf("[Strategy] Selected: %s (weight: %.2f) - %s%n", 
+                best.getStrategyName(), best.getWeight(), best.getReason());
+            
+            return getStrategyByName(best.getStrategyName());
         }
 
-        // Negative: Be Professional/Neutral (CORRECTION HERE)
-        else if (sentiment.isNegative() && sentiment.getConfidence() >= negativeThreshold) {
-            // Before we used FriendlyStrategy, which caused "Wonderful!" responses to "I hate you".
-            // NeutralStrategy provides a safe, de-escalating response to aggression.
-            return neutralStrategy;
-        }
-
-        // 4. DEFAULT
-        else {
-            return neutralStrategy;
-        }
+        // 3. DEFAULT
+        return neutralStrategy;
     }
 
     public ResponseStrategy getStrategyByName(String strategyName) {
@@ -77,6 +133,12 @@ public class StrategySelector {
             case "sad", "crying" -> sadStrategy;
             case "nostalgic", "memory" -> nostalgicStrategy;
             case "extremesupport", "crisis", "support", "help" -> extremeSupportStrategy;
+            case "angry", "mad" -> angryStrategy;
+            case "excited", "thrilled" -> excitedStrategy;
+            case "scared", "afraid", "anxious" -> scaredStrategy;
+            case "thoughtful", "thinking" -> thoughtfulStrategy;
+            case "serious", "professional" -> seriousStrategy;
+            case "exhausted", "tired" -> exhaustedStrategy;
             default -> neutralStrategy;
         };
     }
