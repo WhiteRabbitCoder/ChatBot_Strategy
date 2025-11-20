@@ -115,18 +115,90 @@ public class MoodDetectionService {
     
     /**
      * Rule-based sentiment detection as fallback.
-     * Simple keyword matching for demonstration.
+     * Enhanced with detection for romantic, sad, nostalgic, and crisis situations.
      */
     private Sentiment detectMoodRuleBased(String text) {
         String lowerText = text.toLowerCase();
         
+        // PRIORITY 1: Check for crisis/extreme situations first (highest priority)
+        String[] crisisKeywords = {
+            "kill myself", "end my life", "want to die", "suicide", "suicidal",
+            "better off dead", "no reason to live", "ending it all",
+            "can't go on", "don't want to live", "take my life",
+            "kill them", "hurt them", "harm others", "shoot up",
+            "want to hurt", "going to hurt", "make them pay",
+            "kill everyone", "murder", "going to kill"
+        };
+        
+        for (String keyword : crisisKeywords) {
+            if (lowerText.contains(keyword)) {
+                return new Sentiment("CRISIS", 0.99f);
+            }
+        }
+        
+        // PRIORITY 2: Check for specific emotional states
+        // Romantic keywords
+        String[] romanticKeywords = {"love you", "in love", "my love", "romance", "romantic",
+                                     "my heart", "kiss", "amor", "te amo", "beautiful soul",
+                                     "soulmate", "forever", "my darling", "sweetheart"};
+        
+        // Sad keywords
+        String[] sadKeywords = {"depressed", "depression", "crying", "tears", "heartbroken",
+                               "devastated", "miserable", "hopeless", "lonely", "empty inside",
+                               "can't stop crying", "so sad", "broken heart", "grief"};
+        
+        // Nostalgic keywords
+        String[] nostalgicKeywords = {"remember when", "used to", "miss the old", "back in the day",
+                                     "childhood", "those days", "reminds me", "nostalgia",
+                                     "wish i could go back", "the good old days", "looking back",
+                                     "if only i could", "bring back"};
+        
+        int romanticCount = 0;
+        int sadCount = 0;
+        int nostalgicCount = 0;
+        
+        for (String keyword : romanticKeywords) {
+            if (lowerText.contains(keyword)) {
+                romanticCount++;
+            }
+        }
+        
+        for (String keyword : sadKeywords) {
+            if (lowerText.contains(keyword)) {
+                sadCount++;
+            }
+        }
+        
+        for (String keyword : nostalgicKeywords) {
+            if (lowerText.contains(keyword)) {
+                nostalgicCount++;
+            }
+        }
+        
+        // Return specific emotion if detected with high confidence
+        if (romanticCount > 0) {
+            float confidence = Math.min(0.75f + (romanticCount * 0.1f), 0.95f);
+            return new Sentiment("ROMANTIC", confidence);
+        }
+        
+        if (sadCount > 0) {
+            float confidence = Math.min(0.75f + (sadCount * 0.1f), 0.95f);
+            return new Sentiment("SAD", confidence);
+        }
+        
+        if (nostalgicCount > 0) {
+            float confidence = Math.min(0.75f + (nostalgicCount * 0.1f), 0.95f);
+            return new Sentiment("NOSTALGIC", confidence);
+        }
+        
+        // PRIORITY 3: General positive/negative sentiment
         // Positive keywords
         String[] positiveKeywords = {"good", "great", "excellent", "wonderful", "amazing", 
-                                     "happy", "love", "best", "perfect", "awesome", "fantastic", 
+                                     "happy", "best", "perfect", "awesome", "fantastic", 
                                      "nice", "thank", "thanks"};
         
         // Negative keywords
-        String[] negativeKeywords = {"bad", "terrible", "awful", "hate", "worst", "sad", 
+        String[] negativeKeywords = {"bad", "terrible", "awful", "hate", "worst", 
                                      "angry", "horrible", "poor", "disappointed", "frustrating"};
         
         int positiveCount = 0;

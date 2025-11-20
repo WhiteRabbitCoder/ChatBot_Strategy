@@ -33,6 +33,22 @@ public class Sentiment {
                (!isPositive() && !isNegative());
     }
     
+    public boolean isRomantic() {
+        return "ROMANTIC".equalsIgnoreCase(label);
+    }
+    
+    public boolean isSad() {
+        return "SAD".equalsIgnoreCase(label);
+    }
+    
+    public boolean isNostalgic() {
+        return "NOSTALGIC".equalsIgnoreCase(label);
+    }
+    
+    public boolean isCrisis() {
+        return "CRISIS".equalsIgnoreCase(label);
+    }
+    
     @Override
     public String toString() {
         return String.format("Sentiment{label='%s', confidence=%.2f}", label, confidence);

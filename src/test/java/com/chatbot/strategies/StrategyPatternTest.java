@@ -123,4 +123,106 @@ class StrategyPatternTest {
         assertEquals("NeutralStrategy", strategy.getStrategyName(),
             "Invalid strategy name should default to NeutralStrategy");
     }
+    
+    @Test
+    void testRomanticSentimentSelectsRomantic() {
+        Sentiment romanticSentiment = new Sentiment("ROMANTIC", 0.80f);
+        ResponseStrategy strategy = strategySelector.selectStrategy(romanticSentiment);
+        
+        assertNotNull(strategy);
+        assertEquals("RomanticStrategy", strategy.getStrategyName(),
+            "Romantic sentiment should select RomanticStrategy");
+    }
+    
+    @Test
+    void testSadSentimentSelectsSad() {
+        Sentiment sadSentiment = new Sentiment("SAD", 0.85f);
+        ResponseStrategy strategy = strategySelector.selectStrategy(sadSentiment);
+        
+        assertNotNull(strategy);
+        assertEquals("SadStrategy", strategy.getStrategyName(),
+            "Sad sentiment should select SadStrategy");
+    }
+    
+    @Test
+    void testNostalgicSentimentSelectsNostalgic() {
+        Sentiment nostalgicSentiment = new Sentiment("NOSTALGIC", 0.75f);
+        ResponseStrategy strategy = strategySelector.selectStrategy(nostalgicSentiment);
+        
+        assertNotNull(strategy);
+        assertEquals("NostalgicStrategy", strategy.getStrategyName(),
+            "Nostalgic sentiment should select NostalgicStrategy");
+    }
+    
+    @Test
+    void testCrisisSentimentSelectsExtremeSupport() {
+        Sentiment crisisSentiment = new Sentiment("CRISIS", 0.99f);
+        ResponseStrategy strategy = strategySelector.selectStrategy(crisisSentiment);
+        
+        assertNotNull(strategy);
+        assertEquals("ExtremeSupportStrategy", strategy.getStrategyName(),
+            "Crisis sentiment should select ExtremeSupportStrategy");
+    }
+    
+    @Test
+    void testRomanticStrategyResponse() {
+        ResponseStrategy strategy = strategySelector.getStrategyByName("romantic");
+        String response = strategy.generateResponse("I love you", "");
+        
+        assertNotNull(response);
+        assertFalse(response.isEmpty());
+        assertTrue(response.toLowerCase().contains("love") || response.contains("❤") || response.contains("💕"),
+            "Romantic strategy should respond with loving language");
+    }
+    
+    @Test
+    void testSadStrategyResponse() {
+        ResponseStrategy strategy = strategySelector.getStrategyByName("sad");
+        String response = strategy.generateResponse("I'm feeling sad", "");
+        
+        assertNotNull(response);
+        assertFalse(response.isEmpty());
+        assertTrue(response.toLowerCase().contains("sorry") || 
+                   response.toLowerCase().contains("understand") ||
+                   response.toLowerCase().contains("difficult") ||
+                   response.toLowerCase().contains("sad") ||
+                   response.toLowerCase().contains("feel"),
+            "Sad strategy should respond with empathetic language");
+    }
+    
+    @Test
+    void testNostalgicStrategyResponse() {
+        ResponseStrategy strategy = strategySelector.getStrategyByName("nostalgic");
+        String response = strategy.generateResponse("I remember when", "");
+        
+        assertNotNull(response);
+        assertFalse(response.isEmpty());
+        assertTrue(response.toLowerCase().contains("memor") || response.toLowerCase().contains("past"),
+            "Nostalgic strategy should respond with reflective language");
+    }
+    
+    @Test
+    void testExtremeSupportStrategyResponse() {
+        ResponseStrategy strategy = strategySelector.getStrategyByName("extremesupport");
+        String response = strategy.generateResponse("I want to end my life", "");
+        
+        assertNotNull(response);
+        assertFalse(response.isEmpty());
+        assertTrue(response.contains("988") || response.contains("crisis") || response.contains("help"),
+            "Extreme support strategy should provide crisis resources");
+        assertTrue(response.contains("🚨") || response.contains("🆘"),
+            "Extreme support strategy should use urgent indicators");
+    }
+    
+    @Test
+    void testAllNewStrategiesInSelector() {
+        assertEquals("RomanticStrategy", 
+            strategySelector.getStrategyByName("romantic").getStrategyName());
+        assertEquals("SadStrategy", 
+            strategySelector.getStrategyByName("sad").getStrategyName());
+        assertEquals("NostalgicStrategy", 
+            strategySelector.getStrategyByName("nostalgic").getStrategyName());
+        assertEquals("ExtremeSupportStrategy", 
+            strategySelector.getStrategyByName("crisis").getStrategyName());
+    }
 }
