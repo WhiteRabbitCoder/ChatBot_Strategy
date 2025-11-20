@@ -83,7 +83,7 @@ public class ChatBot {
     /**
      * Start an interactive chat session.
      */
-    public void startChat() {y
+    public void startChat() {
         Scanner scanner = new Scanner(System.in);
         
         System.out.println("ChatBot is ready! Type your messages below.");

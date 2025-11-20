@@ -49,6 +49,30 @@ public class Sentiment {
         return "CRISIS".equalsIgnoreCase(label);
     }
     
+    public boolean isAngry() {
+        return "ANGRY".equalsIgnoreCase(label);
+    }
+    
+    public boolean isExcited() {
+        return "EXCITED".equalsIgnoreCase(label);
+    }
+    
+    public boolean isScared() {
+        return "SCARED".equalsIgnoreCase(label);
+    }
+    
+    public boolean isThoughtful() {
+        return "THOUGHTFUL".equalsIgnoreCase(label);
+    }
+    
+    public boolean isSerious() {
+        return "SERIOUS".equalsIgnoreCase(label);
+    }
+    
+    public boolean isExhausted() {
+        return "EXHAUSTED".equalsIgnoreCase(label);
+    }
+    
     @Override
     public String toString() {
         return String.format("Sentiment{label='%s', confidence=%.2f}", label, confidence);

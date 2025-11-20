@@ -69,7 +69,10 @@ public class MoodDetectionService {
 
     private boolean isSpecificPersona(String label) {
         return label.equals("CRISIS") || label.equals("ROMANTIC") ||
-               label.equals("SAD") || label.equals("NOSTALGIC");
+               label.equals("SAD") || label.equals("NOSTALGIC") ||
+               label.equals("ANGRY") || label.equals("EXCITED") ||
+               label.equals("SCARED") || label.equals("THOUGHTFUL") ||
+               label.equals("SERIOUS") || label.equals("EXHAUSTED");
     }
 
     private void logDetection(String source, String label, float conf) {
@@ -126,23 +129,53 @@ public class MoodDetectionService {
     private Sentiment detectMoodRuleBased(String text) {
         String lower = text.toLowerCase();
 
-        // 1. CRISIS
-        String[] crisis = {"kill myself", "suicide", "want to die", "better off dead", "self-harm"};
+        // 1. CRISIS (Highest Priority)
+        String[] crisis = {"kill myself", "suicide", "want to die", "better off dead", "self-harm", 
+                          "suicidarme", "matarme", "quiero morir"};
         if (containsAny(lower, crisis)) return new Sentiment("CRISIS", 1.0f);
 
-        // 2. SPECIFIC EMOTIONS
-        String[] romantic = {"love", "sweetheart", "darling", "soulmate", "kiss", "marry", "romance"};
-        if (containsAny(lower, romantic)) return new Sentiment("ROMANTIC", 0.9f);
+        // 2. SPECIFIC EMOTIONS (High Priority)
+        String[] angry = {"angry", "furious", "mad", "hate", "enraged", "pissed", 
+                         "enojado", "furioso", "odio", "enfadado", "cabreado"};
+        if (containsAny(lower, angry)) return new Sentiment("ANGRY", 0.9f);
 
-        String[] sad = {"sad", "crying", "tears", "depressed", "heartbroken", "grief", "lonely", "blue"};
+        String[] scared = {"scared", "afraid", "terrified", "anxious", "nervous", "panic", "worried",
+                          "asustado", "miedo", "aterrado", "nervioso", "pánico", "preocupado"};
+        if (containsAny(lower, scared)) return new Sentiment("SCARED", 0.9f);
+
+        String[] sad = {"sad", "crying", "tears", "depressed", "heartbroken", "grief", "lonely", "blue", "miserable",
+                       "triste", "llorando", "lágrimas", "deprimido", "solo", "tristeza"};
         if (containsAny(lower, sad)) return new Sentiment("SAD", 0.9f);
 
-        String[] nostalgic = {"remember", "memories", "used to be", "childhood", "old days", "nostalgia"};
+        String[] exhausted = {"exhausted", "tired", "burnout", "burnt out", "drained", "worn out", "can't anymore",
+                             "agotado", "cansado", "no puedo más", "rendido"};
+        if (containsAny(lower, exhausted)) return new Sentiment("EXHAUSTED", 0.9f);
+
+        String[] romantic = {"love", "sweetheart", "darling", "soulmate", "kiss", "marry", "romance", "adore",
+                            "amor", "cariño", "beso", "te amo", "te quiero"};
+        if (containsAny(lower, romantic)) return new Sentiment("ROMANTIC", 0.85f);
+
+        String[] excited = {"excited", "thrilled", "pumped", "can't wait", "hyped", "amazing", "incredible",
+                           "emocionado", "entusiasmado", "no puedo esperar", "increíble"};
+        if (containsAny(lower, excited)) return new Sentiment("EXCITED", 0.85f);
+
+        String[] nostalgic = {"remember", "memories", "used to be", "childhood", "old days", "nostalgia", "miss the old",
+                             "recuerdo", "memorias", "cuando era", "niñez", "viejos tiempos"};
         if (containsAny(lower, nostalgic)) return new Sentiment("NOSTALGIC", 0.8f);
 
+        String[] thoughtful = {"thinking", "wondering", "considering", "pondering", "reflect", "contemplating",
+                              "pensando", "pensativo", "reflexionando", "preguntándome"};
+        if (containsAny(lower, thoughtful)) return new Sentiment("THOUGHTFUL", 0.75f);
+
+        String[] serious = {"serious", "important", "crucial", "urgent", "critical", "professional",
+                           "serio", "importante", "crucial", "urgente", "profesional"};
+        if (containsAny(lower, serious)) return new Sentiment("SERIOUS", 0.75f);
+
         // 3. GENERAL (Fallback)
-        String[] pos = {"good", "great", "happy", "awesome", "nice", "cool", "thanks"};
-        String[] neg = {"bad", "terrible", "awful", "hate", "angry", "mad", "stupid"};
+        String[] pos = {"good", "great", "happy", "awesome", "nice", "cool", "thanks", "wonderful", "fantastic",
+                       "bueno", "genial", "feliz", "contento", "gracias", "maravilloso"};
+        String[] neg = {"bad", "terrible", "awful", "worst", "horrible", "disgusting",
+                       "malo", "terrible", "horrible", "pésimo"};
 
         int p = countMatches(lower, pos);
         int n = countMatches(lower, neg);

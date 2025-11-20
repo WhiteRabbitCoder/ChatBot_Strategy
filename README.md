@@ -6,7 +6,9 @@ A conversational chatbot that uses the **Strategy Pattern** to dynamically chang
 
 - **Mood Detection**: Uses ONNX Runtime with a lightweight sentiment analysis model (CPU-optimized)
 - **Strategy Pattern**: Dynamically selects response strategies based on detected sentiment
-- **7 Strategies**: Neutral, Friendly, Humorous, Romantic, Sad, Nostalgic, and Extreme Support (crisis)
+- **13 Strategies**: Neutral, Friendly, Humorous, Romantic, Sad, Nostalgic, Extreme Support (crisis), **Angry, Excited, Scared, Thoughtful, Serious, and Exhausted** (NEW)
+- **Weighted Selection**: Strategies are scored by relevance and the best match is selected (no more "first match wins")
+- **Bilingual Support**: Emotion detection works in both English and Spanish
 - **Conversational**: Maintains conversation history for more natural interactions
 - **Crisis Support**: Detects life-threatening situations and provides immediate crisis resources
 - **Extensible**: Easy to add new strategies
@@ -39,6 +41,12 @@ A conversational chatbot that uses the **Strategy Pattern** to dynamically chang
 │                         │◄──── SadStrategy
 │                         │◄──── NostalgicStrategy
 │                         │◄──── ExtremeSupportStrategy (Crisis)
+│                         │◄──── AngryStrategy (NEW)
+│                         │◄──── ExcitedStrategy (NEW)
+│                         │◄──── ScaredStrategy (NEW)
+│                         │◄──── ThoughtfulStrategy (NEW)
+│                         │◄──── SeriousStrategy (NEW)
+│                         │◄──── ExhaustedStrategy (NEW)
 └────────┬────────────────┘
          │ Response
          ▼
@@ -221,7 +229,7 @@ java -jar target/chatbot-strategy-1.0.0.jar sentiment-model.onnx
 
 ### Current Strategies
 
-The chatbot includes **7 strategies**:
+The chatbot includes **13 strategies** (6 new ones added):
 
 1. **NeutralStrategy** - Balanced, informative responses (default)
 2. **FriendlyStrategy** - Warm, supportive responses for positive sentiment
@@ -230,8 +238,15 @@ The chatbot includes **7 strategies**:
 5. **SadStrategy** - Empathetic support for sadness and grief
 6. **NostalgicStrategy** - Reflective, memory-focused responses
 7. **ExtremeSupportStrategy** - **CRISIS** intervention with immediate resources (highest priority)
+8. **AngryStrategy** - De-escalation and calming for anger/frustration (NEW)
+9. **ExcitedStrategy** - Enthusiastic responses matching excitement (NEW)
+10. **ScaredStrategy** - Reassuring, calming responses for fear/anxiety (NEW)
+11. **ThoughtfulStrategy** - Contemplative responses for deep thinking (NEW)
+12. **SeriousStrategy** - Professional, focused tone for serious matters (NEW)
+13. **ExhaustedStrategy** - Supportive responses for tiredness/burnout (NEW)
 
-See [NEW_STRATEGIES.md](NEW_STRATEGIES.md) for detailed documentation on the new strategies.
+See [NEW_STRATEGIES.md](NEW_STRATEGIES.md) for detailed documentation on the strategies.
+See [STRATEGY_OPTIMIZATION.md](STRATEGY_OPTIMIZATION.md) for the latest improvements including weighted selection.
 
 ### Adding a New Strategy
 
