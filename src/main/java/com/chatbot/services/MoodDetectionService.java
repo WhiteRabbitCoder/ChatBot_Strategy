@@ -6,17 +6,20 @@ public class MoodDetectionService {
     
     // Keywords for detecting sad mood
     private static final String[] sadKeywords = {
-        "so sad", "depressed", "miserable", "hopeless", "heartbroken"
+        "so sad", "depressed", "miserable", "hopeless", "heartbroken",
+        "sad", "unhappy", "down", "blue", "gloomy", "sorrow", "melancholy"
     };
     
     // Keywords for detecting negative mood
     private static final String[] negativeKeywords = {
-        "angry", "frustrated", "disappointed", "hate", "terrible", "awful", "worst"
+        "angry", "frustrated", "disappointed", "hate", "terrible", "awful", "worst",
+        "mad", "upset", "annoyed", "bored", "tired", "sick", "pain", "hurt", "stupid", "idiot"
     };
     
     // Keywords for detecting positive mood
     private static final String[] positiveKeywords = {
-        "happy", "great", "wonderful", "amazing", "awesome", "fantastic", "good"
+        "happy", "great", "wonderful", "amazing", "awesome", "fantastic", "good",
+        "glad", "cool", "yay", "excited", "fun", "enjoy"
     };
     
     // Keywords for detecting romantic mood
