@@ -4,8 +4,7 @@ import com.chatbot.model.Sentiment;
 
 /**
  * Selects the appropriate ResponseStrategy based on detected sentiment.
- * This is the core of the Strategy pattern implementation.
- * Now includes support for romantic, sad, nostalgic, and crisis situations.
+ * FIXED: Negative sentiment now maps to Neutral to avoid toxic positivity.
  */
 public class StrategySelector {
     private final ResponseStrategy neutralStrategy;
@@ -15,10 +14,10 @@ public class StrategySelector {
     private final ResponseStrategy sadStrategy;
     private final ResponseStrategy nostalgicStrategy;
     private final ResponseStrategy extremeSupportStrategy;
-    
+
     private final float positiveThreshold = 0.6f;
     private final float negativeThreshold = 0.5f;
-    
+
     public StrategySelector() {
         this.neutralStrategy = new NeutralStrategy();
         this.friendlyStrategy = new FriendlyStrategy();
@@ -28,69 +27,56 @@ public class StrategySelector {
         this.nostalgicStrategy = new NostalgicStrategy();
         this.extremeSupportStrategy = new ExtremeSupportStrategy();
     }
-    
-    /**
-     * Select the appropriate strategy based on detected sentiment.
-     * Strategy selection logic (in priority order):
-     * 1. CRISIS -> ExtremeSupportStrategy (highest priority for safety)
-     * 2. ROMANTIC -> RomanticStrategy
-     * 3. SAD -> SadStrategy
-     * 4. NOSTALGIC -> NostalgicStrategy
-     * 5. POSITIVE with high confidence -> FriendlyStrategy or HumorousStrategy
-     * 6. NEGATIVE -> NeutralStrategy (to balance the mood)
-     * 7. NEUTRAL or low confidence -> NeutralStrategy
-     * 
-     * @param sentiment The detected sentiment
-     * @return The selected ResponseStrategy
-     */
+
     public ResponseStrategy selectStrategy(Sentiment sentiment) {
-        // HIGHEST PRIORITY: Crisis situations
+        // 1. CRITICAL SAFETY LAYER
         if (sentiment.isCrisis()) {
             return extremeSupportStrategy;
         }
-        
-        // SPECIFIC EMOTIONS: Romantic, Sad, Nostalgic
+
+        // 2. SPECIFIC EMOTIONAL STATES
         if (sentiment.isRomantic()) {
-            return romanticStrategy;
+            return sentiment.getConfidence() > 0.7f ? romanticStrategy : friendlyStrategy;
         }
-        
+
         if (sentiment.isSad()) {
             return sadStrategy;
         }
-        
+
         if (sentiment.isNostalgic()) {
             return nostalgicStrategy;
         }
-        
-        // GENERAL SENTIMENTS: Positive, Negative, Neutral
+
+        // 3. GENERAL SENTIMENT HANDLING
+
+        // Positive: Be friendly or funny
         if (sentiment.isPositive() && sentiment.getConfidence() >= positiveThreshold) {
-            // For positive sentiment, alternate between friendly and humorous
-            // to keep conversation dynamic
-            return Math.random() > 0.5 ? friendlyStrategy : humorousStrategy;
-        } else if (sentiment.isNegative() && sentiment.getConfidence() >= negativeThreshold) {
-            // Use neutral strategy for negative sentiment to avoid escalation
+            return Math.random() > 0.4 ? friendlyStrategy : humorousStrategy;
+        }
+
+        // Negative: Be Professional/Neutral (CORRECTION HERE)
+        else if (sentiment.isNegative() && sentiment.getConfidence() >= negativeThreshold) {
+            // Before we used FriendlyStrategy, which caused "Wonderful!" responses to "I hate you".
+            // NeutralStrategy provides a safe, de-escalating response to aggression.
             return neutralStrategy;
-        } else {
-            // Default to neutral for unclear or neutral sentiment
+        }
+
+        // 4. DEFAULT
+        else {
             return neutralStrategy;
         }
     }
-    
-    /**
-     * Get a specific strategy by name (for testing or explicit selection).
-     * 
-     * @param strategyName The name of the strategy
-     * @return The requested strategy, or neutral if not found
-     */
+
     public ResponseStrategy getStrategyByName(String strategyName) {
+        if (strategyName == null) return neutralStrategy;
+
         return switch (strategyName.toLowerCase()) {
             case "friendly" -> friendlyStrategy;
-            case "humorous" -> humorousStrategy;
-            case "neutral" -> neutralStrategy;
-            case "romantic" -> romanticStrategy;
-            case "sad" -> sadStrategy;
-            case "nostalgic" -> nostalgicStrategy;
-            case "extremesupport", "crisis" -> extremeSupportStrategy;
+            case "humorous", "funny" -> humorousStrategy;
+            case "romantic", "love" -> romanticStrategy;
+            case "sad", "crying" -> sadStrategy;
+            case "nostalgic", "memory" -> nostalgicStrategy;
+            case "extremesupport", "crisis", "support", "help" -> extremeSupportStrategy;
             default -> neutralStrategy;
         };
     }

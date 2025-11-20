@@ -4,280 +4,190 @@ import ai.onnxruntime.*;
 import com.chatbot.model.Sentiment;
 import com.chatbot.utils.SimpleTokenizer;
 
-import java.nio.LongBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Service for detecting mood/sentiment using ONNX Runtime.
- * Optimized for CPU execution without GPU.
+ * Service for detecting mood/sentiment.
+ * HYBRID MODE: Rules (Specific personas) + ONNX AI (General sentiment).
+ * Minimalist logs & Multiclass support.
  */
 public class MoodDetectionService {
     private OrtEnvironment env;
     private OrtSession session;
     private final SimpleTokenizer tokenizer;
     private final boolean useOnnxModel;
-    
+
     public MoodDetectionService(String modelPath) {
         this.tokenizer = new SimpleTokenizer();
         this.useOnnxModel = initializeOnnxModel(modelPath);
     }
-    
-    /**
-     * Initialize ONNX model if available.
-     * Falls back to rule-based detection if model is not found.
-     */
+
     private boolean initializeOnnxModel(String modelPath) {
         if (modelPath == null || modelPath.isEmpty()) {
-            System.out.println("[MoodDetection] No model path provided. Using rule-based sentiment analysis.");
+            System.out.println("[Init] Mode: Rule-Based Only");
             return false;
         }
-        
         try {
             env = OrtEnvironment.getEnvironment();
-            
-            // Create session options for CPU execution
             OrtSession.SessionOptions options = new OrtSession.SessionOptions();
             options.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.BASIC_OPT);
-            options.setInterOpNumThreads(2);
-            options.setIntraOpNumThreads(2);
-            
             session = env.createSession(modelPath, options);
-            System.out.println("[MoodDetection] ONNX model loaded successfully from: " + modelPath);
-            System.out.println("[MoodDetection] Model inputs: " + session.getInputNames());
-            System.out.println("[MoodDetection] Model outputs: " + session.getOutputNames());
+            System.out.println("[Init] Mode: AI Hybrid (ONNX Loaded)");
             return true;
         } catch (Exception e) {
-            System.err.println("[MoodDetection] Failed to load ONNX model: " + e.getMessage());
-            System.out.println("[MoodDetection] Falling back to rule-based sentiment analysis.");
+            System.err.println("[Init] ⚠️ AI Load Failed. Falling back to Rules.");
             return false;
         }
     }
-    
-    /**
-     * Detect sentiment from user input.
-     * Uses ONNX model if available, otherwise falls back to rule-based analysis.
-     */
+
     public Sentiment detectMood(String text) {
+        // 1. Priority: Specific Rule-Based Personas
+        Sentiment ruleSentiment = detectMoodRuleBased(text);
+        String label = ruleSentiment.getLabel();
+
+        if (isSpecificPersona(label)) {
+            logDetection("📜 Rule", label, ruleSentiment.getConfidence());
+            return ruleSentiment;
+        }
+
+        // 2. AI Detection for General Sentiment
         if (useOnnxModel && session != null) {
-            return detectMoodWithOnnx(text);
-        } else {
-            return detectMoodRuleBased(text);
-        }
-    }
-    
-    /**
-     * ONNX-based sentiment detection.
-     */
-    private Sentiment detectMoodWithOnnx(String text) {
-        try {
-            // Tokenize input
-            Map<String, long[]> tokens = tokenizer.tokenize(text);
-            
-            // Prepare ONNX inputs
-            Map<String, OnnxTensor> inputs = new HashMap<>();
-            
-            long[] inputIds = tokens.get("input_ids");
-            long[] attentionMask = tokens.get("attention_mask");
-            long[] tokenTypeIds = tokens.get("token_type_ids");
-            
-            long[][] inputIdsArray = new long[1][inputIds.length];
-            long[][] attentionMaskArray = new long[1][attentionMask.length];
-            long[][] tokenTypeIdsArray = new long[1][tokenTypeIds.length];
-            
-            inputIdsArray[0] = inputIds;
-            attentionMaskArray[0] = attentionMask;
-            tokenTypeIdsArray[0] = tokenTypeIds;
-            
-            inputs.put("input_ids", OnnxTensor.createTensor(env, inputIdsArray));
-            inputs.put("attention_mask", OnnxTensor.createTensor(env, attentionMaskArray));
-            inputs.put("token_type_ids", OnnxTensor.createTensor(env, tokenTypeIdsArray));
-            
-            // Run inference
-            try (OrtSession.Result results = session.run(inputs)) {
-                // Get logits output
-                float[][] logits = (float[][]) results.get(0).getValue();
-                
-                // Apply softmax and get prediction
-                float[] probabilities = softmax(logits[0]);
-                int predictedClass = argmax(probabilities);
-                
-                String label = predictedClass == 1 ? "POSITIVE" : "NEGATIVE";
-                float confidence = probabilities[predictedClass];
-                
-                return new Sentiment(label, confidence);
+            try {
+                Sentiment onnxSentiment = detectMoodWithOnnx(text);
+                logDetection("🧠 AI", onnxSentiment.getLabel(), onnxSentiment.getConfidence());
+                return onnxSentiment;
+            } catch (Exception e) {
+                // Silent fallback on error
             }
-        } catch (Exception e) {
-            System.err.println("[MoodDetection] Error during ONNX inference: " + e.getMessage());
-            return detectMoodRuleBased(text);
+        }
+
+        // 3. Fallback
+        logDetection("📜 Rule", label, ruleSentiment.getConfidence());
+        return ruleSentiment;
+    }
+
+    private boolean isSpecificPersona(String label) {
+        return label.equals("CRISIS") || label.equals("ROMANTIC") ||
+               label.equals("SAD") || label.equals("NOSTALGIC");
+    }
+
+    private void logDetection(String source, String label, float conf) {
+        System.out.printf("[%s] %s (%.0f%%)%n", source, label, conf * 100);
+    }
+
+    // ---------------------------------------------------------
+    // ONNX AI ENGINE
+    // ---------------------------------------------------------
+
+    private Sentiment detectMoodWithOnnx(String text) throws OrtException {
+        Map<String, long[]> tokens = tokenizer.tokenize(text);
+
+        long[] inputIds = tokens.get("input_ids");
+        long[] attentionMask = tokens.get("attention_mask");
+
+        // FIX: Enforce [1][SequenceLength] dimensions
+        int seqLen = inputIds.length;
+        long[][] inputIds2D = new long[1][seqLen];
+        long[][] attnMask2D = new long[1][seqLen];
+
+        System.arraycopy(inputIds, 0, inputIds2D[0], 0, seqLen);
+        System.arraycopy(attentionMask, 0, attnMask2D[0], 0, seqLen);
+
+        Map<String, OnnxTensor> inputs = new HashMap<>();
+        inputs.put("input_ids", OnnxTensor.createTensor(env, inputIds2D));
+        inputs.put("attention_mask", OnnxTensor.createTensor(env, attnMask2D));
+        // Note: 'token_type_ids' omitted for compatibility with DistilBERT/RoBERTa
+
+        try (OrtSession.Result results = session.run(inputs)) {
+            float[][] logits = (float[][]) results.get(0).getValue();
+            float[] probs = softmax(logits[0]);
+            int predictedClass = argmax(probs);
+
+            String label;
+            if (probs.length == 3) {
+                // 3-Class Model (Twitter-RoBERTa): 0=Neg, 1=Neu, 2=Pos
+                if (predictedClass == 0) label = "NEGATIVE";
+                else if (predictedClass == 1) label = "NEUTRAL";
+                else label = "POSITIVE";
+            } else {
+                // 2-Class Model (SST-2): 0=Neg, 1=Pos
+                label = (predictedClass == 1) ? "POSITIVE" : "NEGATIVE";
+            }
+
+            return new Sentiment(label, probs[predictedClass]);
         }
     }
-    
-    /**
-     * Rule-based sentiment detection as fallback.
-     * Enhanced with detection for romantic, sad, nostalgic, and crisis situations.
-     */
+
+    // ---------------------------------------------------------
+    // RULE ENGINE
+    // ---------------------------------------------------------
+
     private Sentiment detectMoodRuleBased(String text) {
-        String lowerText = text.toLowerCase();
-        
-        // PRIORITY 1: Check for crisis/extreme situations first (highest priority)
-        String[] crisisKeywords = {
-            "kill myself", "end my life", "want to die", "suicide", "suicidal",
-            "better off dead", "no reason to live", "ending it all",
-            "can't go on", "don't want to live", "take my life",
-            "kill them", "hurt them", "harm others", "shoot up",
-            "want to hurt", "going to hurt", "make them pay",
-            "kill everyone", "murder", "going to kill"
-        };
-        
-        for (String keyword : crisisKeywords) {
-            if (lowerText.contains(keyword)) {
-                return new Sentiment("CRISIS", 0.99f);
-            }
-        }
-        
-        // PRIORITY 2: Check for specific emotional states
-        // Romantic keywords
-        String[] romanticKeywords = {"love you", "in love", "my love", "romance", "romantic",
-                                     "my heart", "kiss", "amor", "te amo", "beautiful soul",
-                                     "soulmate", "forever", "my darling", "sweetheart"};
-        
-        // Sad keywords
-        String[] sadKeywords = {"depressed", "depression", "crying", "tears", "heartbroken",
-                               "devastated", "miserable", "hopeless", "lonely", "empty inside",
-                               "can't stop crying", "so sad", "broken heart", "grief"};
-        
-        // Nostalgic keywords
-        String[] nostalgicKeywords = {"remember when", "used to", "miss the old", "back in the day",
-                                     "childhood", "those days", "reminds me", "nostalgia",
-                                     "wish i could go back", "the good old days", "looking back",
-                                     "if only i could", "bring back"};
-        
-        int romanticCount = 0;
-        int sadCount = 0;
-        int nostalgicCount = 0;
-        
-        for (String keyword : romanticKeywords) {
-            if (lowerText.contains(keyword)) {
-                romanticCount++;
-            }
-        }
-        
-        for (String keyword : sadKeywords) {
-            if (lowerText.contains(keyword)) {
-                sadCount++;
-            }
-        }
-        
-        for (String keyword : nostalgicKeywords) {
-            if (lowerText.contains(keyword)) {
-                nostalgicCount++;
-            }
-        }
-        
-        // Return specific emotion if detected with high confidence
-        if (romanticCount > 0) {
-            float confidence = Math.min(0.75f + (romanticCount * 0.1f), 0.95f);
-            return new Sentiment("ROMANTIC", confidence);
-        }
-        
-        if (sadCount > 0) {
-            float confidence = Math.min(0.75f + (sadCount * 0.1f), 0.95f);
-            return new Sentiment("SAD", confidence);
-        }
-        
-        if (nostalgicCount > 0) {
-            float confidence = Math.min(0.75f + (nostalgicCount * 0.1f), 0.95f);
-            return new Sentiment("NOSTALGIC", confidence);
-        }
-        
-        // PRIORITY 3: General positive/negative sentiment
-        // Positive keywords
-        String[] positiveKeywords = {"good", "great", "excellent", "wonderful", "amazing", 
-                                     "happy", "best", "perfect", "awesome", "fantastic", 
-                                     "nice", "thank", "thanks"};
-        
-        // Negative keywords
-        String[] negativeKeywords = {"bad", "terrible", "awful", "hate", "worst", 
-                                     "angry", "horrible", "poor", "disappointed", "frustrating"};
-        
-        int positiveCount = 0;
-        int negativeCount = 0;
-        
-        for (String keyword : positiveKeywords) {
-            if (lowerText.contains(keyword)) {
-                positiveCount++;
-            }
-        }
-        
-        for (String keyword : negativeKeywords) {
-            if (lowerText.contains(keyword)) {
-                negativeCount++;
-            }
-        }
-        
-        if (positiveCount > negativeCount) {
-            float confidence = Math.min(0.7f + (positiveCount * 0.1f), 0.95f);
-            return new Sentiment("POSITIVE", confidence);
-        } else if (negativeCount > positiveCount) {
-            float confidence = Math.min(0.7f + (negativeCount * 0.1f), 0.95f);
-            return new Sentiment("NEGATIVE", confidence);
-        } else {
-            return new Sentiment("NEUTRAL", 0.6f);
-        }
+        String lower = text.toLowerCase();
+
+        // 1. CRISIS
+        String[] crisis = {"kill myself", "suicide", "want to die", "better off dead", "self-harm"};
+        if (containsAny(lower, crisis)) return new Sentiment("CRISIS", 1.0f);
+
+        // 2. SPECIFIC EMOTIONS
+        String[] romantic = {"love", "sweetheart", "darling", "soulmate", "kiss", "marry", "romance"};
+        if (containsAny(lower, romantic)) return new Sentiment("ROMANTIC", 0.9f);
+
+        String[] sad = {"sad", "crying", "tears", "depressed", "heartbroken", "grief", "lonely", "blue"};
+        if (containsAny(lower, sad)) return new Sentiment("SAD", 0.9f);
+
+        String[] nostalgic = {"remember", "memories", "used to be", "childhood", "old days", "nostalgia"};
+        if (containsAny(lower, nostalgic)) return new Sentiment("NOSTALGIC", 0.8f);
+
+        // 3. GENERAL (Fallback)
+        String[] pos = {"good", "great", "happy", "awesome", "nice", "cool", "thanks"};
+        String[] neg = {"bad", "terrible", "awful", "hate", "angry", "mad", "stupid"};
+
+        int p = countMatches(lower, pos);
+        int n = countMatches(lower, neg);
+
+        if (p > n) return new Sentiment("POSITIVE", 0.7f);
+        if (n > p) return new Sentiment("NEGATIVE", 0.7f);
+        return new Sentiment("NEUTRAL", 0.5f);
     }
-    
-    /**
-     * Apply softmax to convert logits to probabilities.
-     */
+
+    // ---------------------------------------------------------
+    // UTILS
+    // ---------------------------------------------------------
+
+    private boolean containsAny(String text, String[] keywords) {
+        for (String k : keywords) if (text.contains(k)) return true;
+        return false;
+    }
+
+    private int countMatches(String text, String[] keywords) {
+        int c = 0;
+        for (String k : keywords) if (text.contains(k)) c++;
+        return c;
+    }
+
     private float[] softmax(float[] logits) {
         float max = Float.NEGATIVE_INFINITY;
-        for (float logit : logits) {
-            if (logit > max) max = logit;
-        }
-        
+        for (float val : logits) if (val > max) max = val;
+
         float sum = 0.0f;
         float[] exp = new float[logits.length];
         for (int i = 0; i < logits.length; i++) {
             exp[i] = (float) Math.exp(logits[i] - max);
             sum += exp[i];
         }
-        
-        for (int i = 0; i < exp.length; i++) {
-            exp[i] /= sum;
-        }
-        
+        for (int i = 0; i < exp.length; i++) exp[i] /= sum;
         return exp;
     }
-    
-    /**
-     * Find index of maximum value.
-     */
+
     private int argmax(float[] array) {
-        int maxIndex = 0;
-        float maxValue = array[0];
-        for (int i = 1; i < array.length; i++) {
-            if (array[i] > maxValue) {
-                maxValue = array[i];
-                maxIndex = i;
-            }
-        }
-        return maxIndex;
+        int maxIdx = 0;
+        for (int i = 1; i < array.length; i++) if (array[i] > array[maxIdx]) maxIdx = i;
+        return maxIdx;
     }
-    
-    /**
-     * Clean up resources.
-     */
+
     public void close() {
-        try {
-            if (session != null) {
-                session.close();
-            }
-            if (env != null) {
-                env.close();
-            }
-        } catch (Exception e) {
-            System.err.println("Error closing ONNX resources: " + e.getMessage());
-        }
+        try { if (session != null) session.close(); if (env != null) env.close(); } catch (Exception e) {}
     }
 }
