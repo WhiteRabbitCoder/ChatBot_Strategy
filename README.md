@@ -6,8 +6,10 @@ A conversational chatbot that uses the **Strategy Pattern** to dynamically chang
 
 - **Mood Detection**: Uses ONNX Runtime with a lightweight sentiment analysis model (CPU-optimized)
 - **Strategy Pattern**: Dynamically selects response strategies based on detected sentiment
+- **7 Strategies**: Neutral, Friendly, Humorous, Romantic, Sad, Nostalgic, and Extreme Support (crisis)
 - **Conversational**: Maintains conversation history for more natural interactions
-- **Extensible**: Easy to add new strategies (e.g., `AngryStrategy`, `EmpatheticStrategy`)
+- **Crisis Support**: Detects life-threatening situations and provides immediate crisis resources
+- **Extensible**: Easy to add new strategies
 - **CPU-Optimized**: Works on laptops without GPU (tested on Ryzen 5 5500U, 32GB RAM)
 
 ## 🏗️ Architecture
@@ -33,6 +35,10 @@ A conversational chatbot that uses the **Strategy Pattern** to dynamically chang
 │  ResponseStrategy       │◄──── NeutralStrategy
 │  (interface)            │◄──── FriendlyStrategy
 │                         │◄──── HumorousStrategy
+│                         │◄──── RomanticStrategy
+│                         │◄──── SadStrategy
+│                         │◄──── NostalgicStrategy
+│                         │◄──── ExtremeSupportStrategy (Crisis)
 └────────┬────────────────┘
          │ Response
          ▼
@@ -142,6 +148,21 @@ You: This is amazing!
 [Debug] Selected strategy: HumorousStrategy
 Bot: Ha! That's funny! Why do programmers prefer dark mode? Because light attracts bugs! 🐛 Anyway, what else is on your mind?
 
+You: I love you so much
+[Debug] Detected sentiment: Sentiment{label='ROMANTIC', confidence=0.85}
+[Debug] Selected strategy: RomanticStrategy
+Bot: How lovely! Love is such a wonderful feeling. It makes everything brighter! 💕
+
+You: I'm feeling really sad and crying
+[Debug] Detected sentiment: Sentiment{label='SAD', confidence=0.95}
+[Debug] Selected strategy: SadStrategy
+Bot: I'm sorry to hear that. It's okay to cry. Tears can be healing. Would you like to talk about what's bothering you?
+
+You: I remember when I was a child
+[Debug] Detected sentiment: Sentiment{label='NOSTALGIC', confidence=0.85}
+[Debug] Selected strategy: NostalgicStrategy
+Bot: Ah, memories... Those early years hold a special magic, don't they? The simplicity and wonder of youth stays with us forever.
+
 You: bye
 [Debug] Detected sentiment: Sentiment{label='NEUTRAL', confidence=0.60}
 [Debug] Selected strategy: NeutralStrategy
@@ -197,6 +218,20 @@ java -jar target/chatbot-strategy-1.0.0.jar sentiment-model.onnx
 ```
 
 ## 🔧 Extending the ChatBot
+
+### Current Strategies
+
+The chatbot includes **7 strategies**:
+
+1. **NeutralStrategy** - Balanced, informative responses (default)
+2. **FriendlyStrategy** - Warm, supportive responses for positive sentiment
+3. **HumorousStrategy** - Playful, lighthearted responses for positive sentiment
+4. **RomanticStrategy** - Affectionate, loving responses for romantic expressions
+5. **SadStrategy** - Empathetic support for sadness and grief
+6. **NostalgicStrategy** - Reflective, memory-focused responses
+7. **ExtremeSupportStrategy** - **CRISIS** intervention with immediate resources (highest priority)
+
+See [NEW_STRATEGIES.md](NEW_STRATEGIES.md) for detailed documentation on the new strategies.
 
 ### Adding a New Strategy
 
